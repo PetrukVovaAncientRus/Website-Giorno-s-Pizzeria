@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pizzeria</title>
+  <style>
+    :root{
+      --bg: #ffffff;
+      --muted: #8b8b8b;
+      --warm: #ffd66b;
+      --warm-dark: #ffb84d;
+      --card-bg: #ffffff;
+      --shadow: 0 8px 24px rgba(20,20,20,0.06);
+      --header-h: 120px;
+      --radius: 18px;
+      --glass: rgba(255,255,255,0.6);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color-scheme: light;
+    }
+
+    /* --- Reset / page --- */
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; background:var(--bg); color:#222}
+    a{color:inherit; text-decoration:none}
+    button{font:inherit}
+
+    /* --- Header (fixed) --- */
+    header.site-header{
+      position:fixed;
+      left: 0;
+      right: 0;
+      height:var(--header-h);
+      background: #ffd66b;
+      border-radius: 0 0 28px 28px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:12px 20px;
+      box-shadow: var(--shadow), 0 2px 8px rgba(0,0,0,0.04);
+      z-index:2000;
+      transition: box-shadow .25s ease, transform .2s ease;
+      backdrop-filter: blur(6px);
+    }
+
+    /* left / center / right slots */
+    .header-inner{
+      width:1200px;
+      max-width:calc(100% - 48px);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    /* --- Logo in center --- */
+    .logo-wrap{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:6px;
+      user-select:none;
+    }
+
+    /* svg logo approximating user's sketch (pizza slice + circle) */
+    .logo-svg{
+      width:76px;
+      height:76px;
+      display:block;
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.08));
+      transition: transform .28s ease;
+    }
+
+    .brand-title{
+      font-weight:700;
+      font-size:22.5px;
+      letter-spacing:0.6px;
+      color:#222;
+    }
+
+    /* --- Menu button (right) --- */
+    .menu-btn{
+      width:56px;
+      height:44px;
+      border-radius:12px;
+      background: #f3eaea;
+      border:1px solid rgba(0,0,0,0.06);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      transition: transform .18s ease, box-shadow .18s;
+    }
+    .menu-btn:active{ transform:translateY(1px) scale(.995) }
+    .menu-icon{
+      width:28px;height:22px; position:relative;
+    }
+    .menu-icon span{
+      position:absolute;
+      left:0; right:0; height:3px; background:var(--muted);
+      border-radius:4px; display:block; transition: transform .28s, background .2s, opacity .2s;
+    }
+    .menu-icon span:nth-child(1){ top:0 }
+    .menu-icon span:nth-child(2){ top:50%; transform:translateY(-50%) }
+    .menu-icon span:nth-child(3){ bottom:0 }
+
+    .menu-btn.open .menu-icon span{ background:var(--warm-dark) }
+    .menu-btn.open .menu-icon span:nth-child(1){ transform: translateY(9px) rotate(45deg) }
+    .menu-btn.open .menu-icon span:nth-child(2){ opacity:0 }
+    .menu-btn.open .menu-icon span:nth-child(3){ transform: translateY(-9px) rotate(-45deg) }
+
+    /* --- Dropdown links --- */
+    .tabs-panel{
+      position: fixed;
+      left: 78%;
+      top: var(--header-h);
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      padding: 0;
+      background: transparent;
+      border-top: 0;
+      z-index: 1900;
+      opacity: 0; /* скрыто по умолчанию */
+      pointer-events: none;
+      transform-origin: top;
+      translate: 0 -50px;
+      transition: opacity .16s ease, translate .2s ease;
+    }
+
+    .tabs-panel.open{
+      opacity: 1;
+      pointer-events: auto;
+      translate: 0 0;
+    }
+
+    /* отдельная капсула */
+    .tab{
+      margin-top: -32px;
+      width: 160px;
+      height: 70px;
+      display: inline-flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 10px 36px;
+      border-radius: 0 0 18px 18px;
+      background: var(--warm);
+      color: #222;
+      font-weight: 700;
+      font-size: 20px;
+      transform: translateY(12px);
+      transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+
+    .tab:hover{
+      transform: translateY(30px);
+      background: var(--warm);
+      box-shadow: 0 10px 10px rgba(18,18,18,0.08);
+    }
+
+    /* чтобы на телефоне не было слишком низко */
+    @media (max-width:700px){
+      .tabs-panel{
+        width: calc(100% - 16px);
+        left: 8px;
+        transform: none;
+        justify-content: center;
+        gap: 8px;
+        top: 76px; /* если у тебя header уменьшается до 76px */
+      }
+      .tab{ padding: 9px 10px; transform: translateY(10px); }
+      .tab:hover{ transform: translateY(14px); }
+    }
+
+    /* --- Page content --- */
+    main{ padding: calc(var(--header-h) + 40px) 20px 80px; max-width:1200px; margin:0 auto; }
+
+    /* Section heading */
+    .section-title{
+      text-align:center; margin:18px 0 28px; font-size:28px; color:#222; font-weight:800;
+      letter-spacing:0.2px;
+    }
+
+    /* buttons */
+    .main-top-actions{
+      width: 100%;
+      display: flex;
+      gap: 22px;
+      margin-bottom: 30px;
+    }
+
+    .top-btn{
+      padding: 12px 28px;
+      border-radius: 14px;
+      color: #222;
+      font-weight: 700;
+      font-size: 16px;
+      text-decoration: none;
+      transition: transform .5s ease;
+    }
+    .top-btn:hover{ filter: brightness(0.9); }
+
+    /* --- Menu grid --- */
+    .menu-grid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:22px;
+      align-items:start;
+    }
+
+    .pizza-card{
+      background: transparent;
+      border-radius:14px;
+      padding:14px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      overflow:hidden;
+      min-height:300px;
+    }
+
+    .pizza-media{
+      height: 280px;
+      width: 280px;
+      border-radius:50%;
+      margin: auto;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      transition:transform .2s ease;
+      cursor:pointer;
+    }
+    .pizza-media:hover{ transform: translateY(-4px) scale(1.01); }
+
+    /* placeholder pizza image */
+    .pizza-media img{ object-fit:cover; display:block; }
+
+    .pizza-meta{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .pizza-title{ font-weight:700; font-size:18px; color:#191919 }
+    .pizza-price{ background:linear-gradient(90deg,var(--warm),var(--warm-dark)); color:#2b2b2b; padding:6px 10px; border-radius:10px; font-weight:700 }
+
+    .pizza-desc{
+      color:var(--muted);
+      line-height:1.3;
+      font-size:14px;
+      display:-webkit-box;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+
+    .pizza-actions{ margin-top:auto; display:flex; gap:8px }
+    .btn-order{
+      background:var(--warm); color:#2b2b2b; border:none; padding:10px 12px; border-radius:10px; cursor:pointer;
+      box-shadow: 0 8px 18px rgba(255,182,77,0.12);
+      transition: transform .12s ease;
+    }
+    .btn-order:active{ transform:translateY(1px); color: black; }
+
+    /* --- Modal for full description --- */
+    .overlay{
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background: rgba(8,8,8,0.45); z-index:3000; opacity:0; pointer-events:none; transition: opacity .2s ease;
+    }
+    .overlay.open{ opacity:1; pointer-events:auto }
+
+    .modal{
+      width:90%; max-width:720px; background:#fff; border-radius:14px; padding:18px;
+    }
+    .modal-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .modal-title{ font-weight:800; font-size:20px }
+    .modal-body{ margin-top:12px; color:#333; line-height:1.5 }
+    .modal-actions { display: flex; margin-top: 12px; }
+
+    .btn-order-main {
+      color: black;
+      border: 1px solid var(--muted);
+      background: transparent;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: .2s;
+    }
+    .btn-order-main:hover { background: var(--warm); }
+
+    .close-btn{ background:transparent; border:none; font-weight:700; font-size:18px; cursor:pointer }
+
+    /* --- Responsive --- */
+    @media (max-width:1000px){
+      .menu-grid{ grid-template-columns: repeat(2, 1fr) }
+    }
+    @media (max-width:700px){
+      header.site-header{ left:8px; right:8px; top:8px; height:76px; border-radius:14px; }
+      .header-inner{ gap:8px }
+      .logo-svg{ width:52px; height:52px }
+      .brand-title{ font-size:16px }
+      .menu-btn{ width:48px; height:40px }
+      .dropdown{ right:8px; width:220px; top: calc(8px + 76px) }
+      .menu-grid{ grid-template-columns: 1fr; gap:16px }
+      main{ padding-top: calc(76px + 28px)  }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header" role="banner" aria-label="header">
+    <div class="header-inner" role="navigation">
+      <!-- left placeholder (keeps center centered) -->
+      <div style="width:56px; height:44px"></div>
+
+      <!-- center logo + title -->
+      <div class="logo-wrap" aria-hidden="false">
+        <!-- SVG logo approximating the user's sketch -->
+        <svg class="logo-svg" viewBox="0 0 120 120" aria-hidden="true" role="img">
+          <defs>
+            <linearGradient id="g1" x1="0" x2="1">
+              <stop offset="0" stop-color="#fff1d0"/>
+              <stop offset="1" stop-color="#fff"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="0" x2="1">
+              <stop offset="0" stop-color="#ffd66b"/>
+              <stop offset="1" stop-color="#ffb84d"/>
+            </linearGradient>
+          </defs>
+
+          <!-- main circle -->
+          <circle cx="60" cy="60" r="48" fill="url(#g1)" stroke="#f5c66a" stroke-width="3" />
+          <!-- crust wavy -->
+          <path d="M12,62 C18,90 40,104 60,102 C80,104 102,90 108,62" fill="none" stroke="#f6d7a5" stroke-width="6" stroke-linecap="round" />
+          <!-- slice triangle -->
+          <path d="M62 18 L88 78 A44 44 0 0 1 30 90 Z" fill="url(#g2)" opacity="0.95" transform="rotate(-10 60 60)"/>
+          <!-- toppings -->
+          <circle cx="44" cy="54" r="4" fill="#b74a35"/>
+          <circle cx="72" cy="58" r="4" fill="#b74a35"/>
+          <circle cx="60" cy="82" r="4" fill="#b74a35"/>
+        </svg>
+
+        <div class="brand-title" style="font-family: Gabriola">Giorno`s Pizzeria</div>
+      </div>
+
+      <!-- right menu button -->
+      <div>
+        <button class="menu-btn" id="menuToggle" aria-expanded="false" aria-controls="siteMenu" aria-label="Открыть меню">
+          <span class="menu-icon" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- dropdown links (hidden by default) -->
+  <nav id="siteMenu" class="tabs-panel" aria-hidden="true" aria-label="Main menu">
+    <a class="tab" href="#home">Home</a>
+    <a class="tab" href="#contact">Contact</a>
+    <a class="tab" href="#about">About Us</a>
+  </nav>
+  
+
+  <main id="home">
+    <div class="main-top-actions">
+      <a style="background: var(--warm);" href="login.html" class="top-btn">Sign in</a>
+      <a style="background: #dadada;" href="cart.html" class="top-btn">Cart</a>
+    </div>
+
+    <section aria-labelledby="menuTitle">
+      <h2 class="section-title">Pizzas</h2>
+      <div class="menu-grid" id="menuGrid">
+
+        <!-- Card 1 -->
+        <article class="pizza-card" data-title="Margarita" data-price="8.50"
+          data-desc="Classic pizza with tomato sauce, mozzarella and fresh basil. Thin crispy crust. Full ingredients: tomatoes, mozzarella, olive oil, basil, a bit of oregano. A combination of simple fresh ingredients."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Margarita" style="width:122%; height:122%;"
+              src="https://png.pngtree.com/png-clipart/20241231/original/pngtree-top-view-italian-sliced-round-pizza-transparent-background-png-image_18420419.png">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Margarita</div>
+            <div class="pizza-price">8.50 €</div>
+          </div>
+          <div class="pizza-desc">Classic pizza with tomato sauce, mozzarella and fresh basil. Thin crispy crust...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+    
+        <!-- Card 2 -->
+        <article class="pizza-card" data-title="Pepperoni" data-price="9.90"
+          data-desc="Spicy and flavorful pepperoni with crispy edges and juicy sausage slices. Full ingredients: tomato sauce, mozzarella, pepperoni, Italian spices."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Pepperoni" style="width:128%; height:128%;"
+              src="https://img.freepik.com/free-photo/thinly-sliced-pepperoni-is-popular-pizza-topping-american-style-pizzerias-isolated-white-background-still-life_639032-229.jpg?semt=ais_user_personalization&w=740&q=80">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Pepperoni</div>
+            <div class="pizza-price">9.90 €</div>
+          </div>
+          <div class="pizza-desc">Spicy and flavorful pepperoni with crispy edges and juicy sausage slices...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+    
+        <!-- Card 3 -->
+        <article class="pizza-card" data-title="Four Cheeses" data-price="10.50"
+          data-desc="Rich cheese pizza: mozzarella, gorgonzola, parmesan and emmental on a creamy base. Perfect for cheese lovers."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Four Cheeses" style="width:98%; height:98%;"
+              src="https://pizza5nizza.ru/image/cache/catalog/new-10-06-2023/4-syra-phz00032-500x400.png">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Four Cheeses</div>
+            <div class="pizza-price">10.50 €</div>
+          </div>
+          <div class="pizza-desc">Rich cheese pizza: mozzarella, gorgonzola, parmesan and emmental on a creamy base...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+    
+        <!-- Card 4 -->
+        <article class="pizza-card" data-title="Vegetarian" data-price="9.20"
+          data-desc="Fresh vegetables: bell pepper, eggplant, mushrooms and arugula on a tomato base — light and aromatic."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Vegetarian" style="width:115%; height:115%;"
+              src="https://png.pngtree.com/png-clipart/20240313/original/pngtree-pizza-top-view-stock-illustration-png-image_14580652.png">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Vegetarian</div>
+            <div class="pizza-price">9.20 €</div>
+          </div>
+          <div class="pizza-desc">Fresh vegetables: bell pepper, eggplant, mushrooms and arugula on a tomato base...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+    
+        <!-- Card 5 -->
+        <article class="pizza-card" data-title="BBQ Chicken" data-price="11.00"
+          data-desc="Grilled chicken with barbecue sauce, sweet onion and cheese — a rich flavor for lovers of savory tastes."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="BBQ Chicken" style="width:100%; height:100%;"
+              src="https://img.freepik.com/premium-photo/top-view-bbq-chicken-pizza-with-tomatoes-paprika-isolated-white-background_79762-3009.jpg">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">BBQ Chicken</div>
+            <div class="pizza-price">11.00 €</div>
+          </div>
+          <div class="pizza-desc">Grilled chicken with barbecue sauce, sweet onion and cheese — rich and flavorful...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+    
+        <!-- Card 6 -->
+        <article class="pizza-card" data-title="Spicy Salsiccia" data-price="10.80"
+          data-desc="Spicy Italian sausage, jalapeño and spices make this pizza fiery and aromatic."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Spicy Salsiccia"  style="width:112%; height:112%;"
+              src="https://st.depositphotos.com/5954192/61248/i/450/depositphotos_612482500-stock-photo-top-view-delicious-spicy-pizza.jpg">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Spicy Salsiccia</div>
+            <div class="pizza-price">10.80 €</div>
+          </div>
+          <div class="pizza-desc">Spicy Italian sausage, jalapeño and spices make this pizza fiery...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+        <!-- Card 7 -->
+        <article class="pizza-card" data-title="Hawaiian" data-price="9.80"
+          data-desc="A sweet and savory combination of tomato sauce, mozzarella, ham and juicy pineapple. A perfect balance of flavors."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Hawaiian"  style="width:100%; height:100%;"
+              src="https://media-cdn.tripadvisor.com/media/photo-s/1b/53/6a/f9/caption.jpg">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Hawaiian</div>
+            <div class="pizza-price">9.80 €</div>
+          </div>
+          <div class="pizza-desc">A sweet and savory combination of tomato sauce, mozzarella, ham...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+        <!-- Card 8 -->
+        <article class="pizza-card" data-title="Capricciosa" data-price="10.20"
+          data-desc="Traditional Italian pizza with tomato sauce, mozzarella, ham, mushrooms, olives and artichokes."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Capricciosa"  style="width:111%; height:111%;"
+              src="https://crust-pie-pizza.ru/wp-content/uploads/2021/12/kaprichoza.jpg">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Capricciosa</div>
+            <div class="pizza-price">10.20 €</div>
+          </div>
+          <div class="pizza-desc">Traditional Italian pizza with tomato sauce, mozzarella, ham, mushrooms...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+        <!-- Card 9 -->
+        <article class="pizza-card" data-title="Diavola" data-price="11.40"
+          data-desc="Spicy Italian salami with tomato sauce, mozzarella and chili flakes. A fiery favorite."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Diavola"  style="width:99%; height:99%;"
+              src="https://static.insales-cdn.com/r/5zb6mJ1_jLk/rs:fit:1000:0:1/q:100/plain/images/products/1/7142/432389094/%D0%94%D1%8C%D1%8F%D0%B2%D0%BE%D0%BB%D0%B0.png@png">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Diavola</div>
+            <div class="pizza-price">11.40 €</div>
+          </div>
+          <div class="pizza-desc">Spicy Italian salami with tomato sauce, mozzarella and chili flakes...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+        <!-- Card 10 -->
+        <article class="pizza-card" data-title="Mayalona" data-price="11.20"
+          data-desc="A rich and creamy pizza with mozzarella, bacon, mushrooms and a light garlic cream sauce."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Mayalona"  style="width:109%; height:109%;"
+              src="https://png.pngtree.com/png-clipart/20241230/original/pngtree-a-full-pizza-view-from-the-top-png-image_18320394.png">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Mayalona</div>
+            <div class="pizza-price">11.20 €</div>
+          </div>
+          <div class="pizza-desc">A rich and creamy pizza with mozzarella, bacon, mushrooms...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+        <!-- Card 11 -->
+        <article class="pizza-card" data-title="Marinara" data-price="9.80"
+          data-desc="One of the oldest Italian pizzas: tomato sauce, garlic, oregano and olive oil. No cheese."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Marinara"  style="width:106%; height:106%;"
+              src="https://www.eurohfc.com/cdn/shop/products/MG197B7-PIZZAMARINARA_1024x1024@2x.png?v=1638435543">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Marinara</div>
+            <div class="pizza-price">9.80 €</div>
+          </div>
+          <div class="pizza-desc">One of the oldest Italian pizzas: tomato sauce, garlic, oregano and...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+        <!-- Card 12 -->
+        <article class="pizza-card" data-title="Prosciutto" data-price="10.40"
+          data-desc="Classic combination of tomato sauce, mozzarella and high-quality Italian prosciutto."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Prosciutto"  style="width:105%; height:105%;"
+              src="https://img.freepik.com/premium-photo/ham-pizza-prosciutto-from-isolated-white_770123-10194.jpg">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Prosciutto</div>
+            <div class="pizza-price">10.40 €</div>
+          </div>
+          <div class="pizza-desc">Classic combination of tomato sauce, mozzarella and high-quality...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+    
+      </div>
+      <h2 class="section-title" style="margin-top: 5%;">Snacks</h2>
+      <div class="menu-grid" id="menuGrid">
+
+        <!-- Card 13 -->
+        <article class="pizza-card" data-title="French fries" data-price="5.50"
+          data-desc="Fried french fries with ketchup"
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Margarita" style="width:60%; height:60%;"
+              src="">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">French fries</div>
+            <div class="pizza-price">5.50 €</div>
+          </div>
+          <div class="pizza-desc">Fried french fries with ketchup</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+        <!-- Card 14 -->
+        <article class="pizza-card" data-title="Margarita" data-price="8.50"
+          data-desc="Classic pizza with tomato sauce, mozzarella and fresh basil. Thin crispy crust. Full ingredients: tomatoes, mozzarella, olive oil, basil, a bit of oregano. A combination of simple fresh ingredients."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Margarita" style="width:122%; height:122%;"
+              src="https://png.pngtree.com/png-clipart/20241231/original/pngtree-top-view-italian-sliced-round-pizza-transparent-background-png-image_18420419.png">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Margarita</div>
+            <div class="pizza-price">8.50 €</div>
+          </div>
+          <div class="pizza-desc">Classic pizza with tomato sauce, mozzarella and fresh basil. Thin crispy crust...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+        <!-- Card 15 -->
+        <article class="pizza-card" data-title="Margarita" data-price="8.50"
+          data-desc="Classic pizza with tomato sauce, mozzarella and fresh basil. Thin crispy crust. Full ingredients: tomatoes, mozzarella, olive oil, basil, a bit of oregano. A combination of simple fresh ingredients."
+          tabindex="0" role="button">
+          <div class="pizza-media">
+            <img alt="Margarita" style="width:122%; height:122%;"
+              src="https://png.pngtree.com/png-clipart/20241231/original/pngtree-top-view-italian-sliced-round-pizza-transparent-background-png-image_18420419.png">
+          </div>
+          <div class="pizza-meta">
+            <div class="pizza-title">Margarita</div>
+            <div class="pizza-price">8.50 €</div>
+          </div>
+          <div class="pizza-desc">Classic pizza with tomato sauce, mozzarella and fresh basil. Thin crispy crust...</div>
+          <div class="pizza-actions">
+            <button class="btn-order">Details</button>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <section id="contact" style="margin-top:48px">
+      <h3 style="text-align:center; color:#333">Контакты</h3>
+      <p style="text-align:center; color:var(--muted)">Адрес: Улица Примерная, 10 • Телефон: +7 900 000 00 00</p>
+    </section>
+
+    <section id="about" style="margin-top:28px">
+      <h3 style="text-align:center; color:#333">О нас</h3>
+      <p style="max-width:820px;margin:12px auto;color:var(--muted); text-align:center">Небольшая семейная пиццерия, где тесто поднимается естественно, а ингредиенты отбираются вручную. Тёплая атмосфера и быстрый сервис.</p>
+    </section>
+  </main>
+
+  <!-- modal overlay -->
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div id="modalTitle" class="modal-title">Name</div>
+        <button class="close-btn" id="modalClose" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody">Full description</div>
+      <div class="modal-actions">
+        <button id="orderBtn" class="btn-order-main">Order</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const menuToggle = document.getElementById('menuToggle');
+      const dropdown = document.getElementById('siteMenu');
+      const overlay = document.getElementById('overlay');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalBody = document.getElementById('modalBody');
+      const modalClose = document.getElementById('modalClose');
+
+      // open/close dropdown
+      (() => {
+      const menuToggle = document.getElementById('menuToggle');
+      const menu = document.getElementById('siteMenu');
+
+      menuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = menuToggle.classList.toggle('open');
+        menu.classList.toggle('open', open);
+        menuToggle.setAttribute('aria-expanded', String(open));
+        menu.setAttribute('aria-hidden', String(!open));
+      });
+
+      // закрытие по клику вне меню
+      document.addEventListener('click', (e) => {
+        const open = menu.classList.contains('open');
+        if (!open) return;
+
+        const withinMenu = menu.contains(e.target);
+        const withinBtn = menuToggle.contains(e.target);
+        if (!withinMenu && !withinBtn) {
+          menuToggle.classList.remove('open');
+          menu.classList.remove('open');
+          menuToggle.setAttribute('aria-expanded', 'false');
+          menu.setAttribute('aria-hidden', 'true');
+        }
+      });
+
+      // плавный скролл + закрытие меню
+      menu.querySelectorAll('a.tab').forEach(a => {
+        a.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const href = a.getAttribute('href');
+          const target = document.querySelector(href);
+          if (target) {
+            const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 96;
+            const y = target.getBoundingClientRect().top + window.pageYOffset - headerH - 12;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          }
+
+          menuToggle.classList.remove('open');
+          menu.classList.remove('open');
+          menuToggle.setAttribute('aria-expanded', 'false');
+          menu.setAttribute('aria-hidden', 'true');
+        });
+      });
+    })();
+
+      // cards: open modal with full description
+      document.querySelectorAll('.pizza-card').forEach(card => {
+        const title = card.dataset.title || 'Пицца';
+        const price = card.dataset.price || '';
+        const desc = card.dataset.desc || '';
+
+        // click on card or "Подробнее" opens modal
+        const openModal = (e) => {
+          e && e.stopPropagation();
+          modalTitle.textContent = title + (price ? ' — €' + price : '');
+          modalBody.textContent = desc;
+          overlay.classList.add('open');
+          overlay.setAttribute('aria-hidden','false');
+        };
+
+        card.addEventListener('click', openModal);
+        const btn = card.querySelector('.btn-order');
+        if (btn) btn.addEventListener('click', openModal);
+
+        // keyboard accessibility: Enter opens
+        card.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') { openModal(ev); }
+        });
+      });
+
+      // close modal
+      modalClose.addEventListener('click', () => {
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden','true');
+      });
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.classList.remove('open');
+          overlay.setAttribute('aria-hidden','true');
+        }
+      });
+
+      // close modal with Esc
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (overlay.classList.contains('open')) {
+            overlay.classList.remove('open');
+            overlay.setAttribute('aria-hidden','true');
+          }
+          if (dropdown.classList.contains('open')) {
+            menuToggle.classList.remove('open');
+            dropdown.classList.remove('open');
+            dropdown.setAttribute('aria-hidden','true');
+            menuToggle.setAttribute('aria-expanded','false');
+          }
+        }
+      });
+
+      // small UX: when resizing, ensure dropdown positioned correctly (it uses fixed top via CSS var)
+      window.addEventListener('resize', () => {
+        // nothing required; kept for future extension
+      });
+
+    })();
+
+    function addToCart(name, price){
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+    const existing = cart.find(item => item.name === name);
+
+    if(existing){
+      existing.qty += 1;
+    } else {
+      cart.push({ name, price, qty: 1 });
+    }
+
+    localStorage.setItem("cart", JSON.stringify(cart));
+    alert("Added to cart!");
+  }
+</script>
+</body>
+</html>
